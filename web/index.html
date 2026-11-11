@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Universal Checkout — Hosted Checkout Demo (Avalanche Fuji)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.2/ethers.umd.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col justify-between">
+
+  <!-- Header -->
+  <header class="border-b border-slate-800 bg-slate-950/70 backdrop-blur sticky top-0 z-50">
+    <div class="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-red-500 to-amber-500 flex items-center justify-center font-bold text-white shadow-lg shadow-red-500/20">
+          UC
+        </div>
+        <div>
+          <span class="font-bold text-base tracking-tight text-white">Universal Checkout</span>
+          <span class="text-xs bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full border border-red-500/30 ml-2 font-medium">Avalanche Fuji</span>
+        </div>
+      </div>
+
+      <button id="connectWalletBtn" onclick="connectWallet()" class="bg-red-600 hover:bg-red-500 text-white font-semibold px-4 py-2 rounded-xl text-sm transition-all shadow-md shadow-red-600/30 flex items-center gap-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+        <span id="connectWalletText">Kết nối Ví (Connect)</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Checkout Container -->
+  <main class="max-w-4xl mx-auto px-4 py-8 w-full flex-1 flex flex-col items-center justify-center">
+
+    <div class="w-full max-w-xl bg-slate-950 border border-slate-800 rounded-3xl p-6 md:p-8 shadow-2xl relative overflow-hidden">
+      <!-- Glow effect -->
+      <div class="absolute -top-24 -right-24 w-48 h-48 bg-red-600/10 rounded-full blur-3xl pointer-events-none"></div>
+
+      <!-- Store / Product Overview -->
+      <div class="flex items-center justify-between pb-6 border-b border-slate-800/80">
+        <div class="flex items-center gap-3">
+          <div class="w-14 h-14 bg-slate-800/80 border border-slate-700/60 rounded-2xl flex items-center justify-center text-2xl shadow-inner">
+            ⌨️
+          </div>
+          <div>
+            <div class="text-xs text-slate-400 uppercase tracking-wider font-semibold">Đơn hàng Shopify #8842</div>
+            <div class="font-bold text-lg text-white">Bàn Phím Cơ Keychron K2</div>
+            <div class="text-xs text-slate-400">Merchant: <span class="text-slate-300 font-mono">0x000...dEaD</span></div>
+          </div>
+        </div>
+        <div class="text-right">
+          <div class="text-2xl font-black text-white">15.00 <span class="text-sm font-semibold text-red-400">USDC</span></div>
+          <div class="text-xs text-emerald-400 font-medium flex items-center justify-end gap-1">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+            Non-custodial Direct
+          </div>
+        </div>
+      </div>
+
+      <!-- Wallet & Token Info Box -->
+      <div id="walletBox" class="mt-6 bg-slate-900/80 border border-slate-800 rounded-2xl p-4 hidden">
+        <div class="flex items-center justify-between text-xs text-slate-400 mb-2">
+          <span>Ví người mua (Buyer)</span>
+          <span id="walletAddressDisplay" class="font-mono text-slate-200">0x...</span>
+        </div>
+        <div class="grid grid-cols-2 gap-3 pt-2 border-t border-slate-800">
+          <div>
+            <div class="text-xs text-slate-400">Số dư AVAX (Gas)</div>
+            <div id="avaxBalance" class="text-sm font-bold text-white">0.00 AVAX</div>
+          </div>
+          <div>
+            <div class="text-xs text-slate-400 flex items-center justify-between">
+              <span>Số dư USDC</span>
+              <button onclick="mintTestUSDC()" class="text-red-400 hover:text-red-300 font-bold underline text-[11px]">+ Nhận 100 USDC</button>
+            </div>
+            <div id="usdcBalance" class="text-sm font-bold text-white">0.00 USDC</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step-by-Step Payment Action -->
+      <div class="mt-6 space-y-4">
+
+        <!-- Step 1: Approve -->
+        <div id="stepApproveCard" class="border border-slate-800 bg-slate-900/40 rounded-2xl p-4 transition-all">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <span id="step1Badge" class="w-6 h-6 rounded-full bg-slate-800 text-slate-400 text-xs font-bold flex items-center justify-center border border-slate-700">1</span>
+              <div>
+                <div class="text-sm font-bold text-white">Cấp quyền thanh toán USDC (Approve)</div>
+                <div class="text-xs text-slate-400">Cho phép PaymentRouter chuyển đúng 15.00 USDC cho Shop</div>
+              </div>
+            </div>
+            <button id="approveBtn" disabled onclick="handleApprove()" class="bg-slate-800 text-slate-500 px-4 py-2 rounded-xl text-xs font-bold transition-all disabled:opacity-50">
+              Cấp quyền
+            </button>
+          </div>
+        </div>
+
+        <!-- Step 2: Pay with Crypto -->
+        <div id="stepPayCard" class="border border-slate-800 bg-slate-900/40 rounded-2xl p-4 transition-all opacity-60">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <span id="step2Badge" class="w-6 h-6 rounded-full bg-slate-800 text-slate-400 text-xs font-bold flex items-center justify-center border border-slate-700">2</span>
+              <div>
+                <div class="text-sm font-bold text-white">Xác nhận thanh toán (Router.pay)</div>
+                <div class="text-xs text-slate-400">Xác thực chữ ký EIP-712 & hoàn tất đơn hàng Shopify</div>
+              </div>
+            </div>
+            <button id="payBtn" disabled onclick="handlePay()" class="bg-slate-800 text-slate-500 px-5 py-2.5 rounded-xl text-xs font-bold transition-all disabled:opacity-50">
+              Thanh toán ngay
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Live Status / Result Alert -->
+      <div id="statusAlert" class="mt-6 p-4 rounded-2xl border text-xs font-medium hidden">
+        <div id="statusAlertText"></div>
+      </div>
+
+      <!-- On-chain Receipt Box (Shown after payment) -->
+      <div id="receiptBox" class="mt-6 border border-emerald-500/30 bg-emerald-500/10 rounded-2xl p-5 hidden">
+        <div class="flex items-center gap-2 text-emerald-400 font-bold text-sm mb-2">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+          Thanh toán thành công & Đã cập nhật đơn Shopify!
+        </div>
+        <p class="text-xs text-slate-300 leading-relaxed">
+          Số tiền <span class="font-bold text-white">15.00 USDC</span> đã được chuyển thẳng tới ví Merchant. Sự kiện <code class="bg-black/30 px-1 py-0.5 rounded text-emerald-300">PaymentReceived</code> đã được ghi nhận trên Avalanche Fuji.
+        </p>
+        <div class="mt-3 pt-3 border-t border-emerald-500/20 flex items-center justify-between text-xs">
+          <span class="text-slate-400">Block Explorer Link:</span>
+          <a id="explorerTxLink" href="#" target="_blank" class="text-emerald-400 hover:text-emerald-300 font-bold underline flex items-center gap-1">
+            Xem trên Snowtrace ↗
+          </a>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Contract Details Footer -->
+    <div class="mt-8 text-center text-xs text-slate-500 max-w-lg space-y-1">
+      <div>Payment Router: <a href="https://testnet.snowtrace.io/address/0xC83FA9cEcf7fc125dbeC893402c6f0f5e3f5AeE9" target="_blank" class="font-mono text-slate-400 hover:text-slate-200 underline">0xC83FA9cEcf7fc125dbeC893402c6f0f5e3f5AeE9</a></div>
+      <div>MockUSDC: <a href="https://testnet.snowtrace.io/address/0xA61ABC464034161B4C5abAee7298c1503cF6E199" target="_blank" class="font-mono text-slate-400 hover:text-slate-200 underline">0xA61ABC464034161B4C5abAee7298c1503cF6E199</a></div>
+    </div>
+
+  </main>
+
+  <script>
+    // Configuration
+    const FUJI_CHAIN_ID = 43113;
+    const FUJI_CHAIN_HEX = "0xa869";
+    const ROUTER_ADDRESS = "0xC83FA9cEcf7fc125dbeC893402c6f0f5e3f5AeE9";
+    const USDC_ADDRESS = "0xA61ABC464034161B4C5abAee7298c1503cF6E199";
+    const MERCHANT_ADDRESS = "0x000000000000000000000000000000000000dEaD";
+    const PAYMENT_AMOUNT = ethers.parseUnits("15.0", 6); // 15.00 USDC
+
+    // Backend Signer Key (Used in demo to simulate backend issuing the signed PaymentIntent)
+    const DEMO_BACKEND_SIGNER_KEY = "0x74a3c32246b7f783c61242f7df8b5f06fc50e1839c721f75fc09067147781664";
+
+    const ERC20_ABI = [
+      "function balanceOf(address owner) view returns (uint256)",
+      "function allowance(address owner, address spender) view returns (uint256)",
+      "function approve(address spender, uint256 amount) returns (bool)",
+      "function mint(address to, uint256 amount)"
+    ];
+
+    const ROUTER_ABI = [
+      "function pay((bytes32 paymentId, address buyer, address merchant, address token, uint256 amount, uint256 deadline) intent, bytes signature) external",
+      "event PaymentReceived(bytes32 indexed paymentId, address indexed buyer, address indexed merchant, address token, uint256 amount)"
+    ];
+
+    let provider, signer, userAddress;
+    let usdcContract, routerContract;
+
+    function showStatus(message, type = "info") {
+      const alertBox = document.getElementById("statusAlert");
+      const alertText = document.getElementById("statusAlertText");
+      alertBox.classList.remove("hidden", "border-blue-500/30", "bg-blue-500/10", "text-blue-300", "border-emerald-500/30", "bg-emerald-500/10", "text-emerald-300", "border-red-500/30", "bg-red-500/10", "text-red-300");
+
+      if (type === "success") {
+        alertBox.classList.add("border-emerald-500/30", "bg-emerald-500/10", "text-emerald-300");
+      } else if (type === "error") {
+        alertBox.classList.add("border-red-500/30", "bg-red-500/10", "text-red-300");
+      } else {
+        alertBox.classList.add("border-blue-500/30", "bg-blue-500/10", "text-blue-300");
+      }
+
+      alertText.innerHTML = message;
+    }
+
+    async function connectWallet() {
+      if (!window.ethereum) {
+        alert("Vui lòng cài đặt ví Web3 (như MetaMask hoặc Core Wallet) trong trình duyệt!");
+        return;
+      }
+
+      try {
+        showStatus("Đang yêu cầu kết nối ví...");
+        provider = new ethers.BrowserProvider(window.ethereum);
+        const accounts = await provider.send("eth_requestAccounts", []);
+        userAddress = accounts[0];
+
+        // Ensure Avalanche Fuji Network
+        const network = await provider.getNetwork();
+        if (Number(network.chainId) !== FUJI_CHAIN_ID) {
+          showStatus("Đang chuyển ví sang mạng Avalanche Fuji Testnet...");
+          try {
+            await window.ethereum.request({
+              method: 'wallet_switchEthereumChain',
+              params: [{ chainId: FUJI_CHAIN_HEX }],
+            });
+          } catch (switchError) {
+            // Chain not added yet -> Add Avalanche Fuji
+            if (switchError.code === 4902) {
+              await window.ethereum.request({
+                method: 'wallet_addEthereumChain',
+                params: [{
+                  chainId: FUJI_CHAIN_HEX,
+                  chainName: 'Avalanche Fuji C-Chain',
+                  nativeCurrency: { name: 'AVAX', symbol: 'AVAX', decimals: 18 },
+                  rpcUrls: ['https://api.avax-test.network/ext/bc/C/rpc'],
+                  blockExplorerUrls: ['https://testnet.snowtrace.io/']
+                }],
+              });
+            } else {
+              throw switchError;
+            }
+          }
+        }
+
+        signer = await provider.getSigner();
+        usdcContract = new ethers.Contract(USDC_ADDRESS, ERC20_ABI, signer);
+        routerContract = new ethers.Contract(ROUTER_ADDRESS, ROUTER_ABI, signer);
+
+        // Update UI
+        document.getElementById("connectWalletText").innerText = userAddress.slice(0, 6) + "..." + userAddress.slice(-4);
+        document.getElementById("walletAddressDisplay").innerText = userAddress;
+        document.getElementById("walletBox").classList.remove("hidden");
+
+        await refreshBalances();
+        showStatus(" Kết nối ví thành công với mạng Avalanche Fuji!", "success");
+
+      } catch (err) {
+        console.error(err);
+        showStatus("Lỗi kết nối ví: " + (err.message || err), "error");
+      }
+    }
+
+    async function refreshBalances() {
+      if (!signer) return;
+      const avaxBal = await provider.getBalance(userAddress);
+      document.getElementById("avaxBalance").innerText = parseFloat(ethers.formatEther(avaxBal)).toFixed(4) + " AVAX";
+
+      const usdcBal = await usdcContract.balanceOf(userAddress);
+      document.getElementById("usdcBalance").innerText = parseFloat(ethers.formatUnits(usdcBal, 6)).toFixed(2) + " USDC";
+
+      // Check allowance
+      const allowance = await usdcContract.allowance(userAddress, ROUTER_ADDRESS);
+      const approveBtn = document.getElementById("approveBtn");
+      const payBtn = document.getElementById("payBtn");
+      const step1Badge = document.getElementById("step1Badge");
+      const step2Badge = document.getElementById("step2Badge");
+      const stepPayCard = document.getElementById("stepPayCard");
+
+      if (allowance >= PAYMENT_AMOUNT) {
+        // Step 1 already complete
+        step1Badge.innerText = "✓";
+        step1Badge.className = "w-6 h-6 rounded-full bg-emerald-500 text-white text-xs font-bold flex items-center justify-center";
+        approveBtn.innerText = "Đã cấp quyền ✓";
+        approveBtn.disabled = true;
+        approveBtn.className = "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-4 py-2 rounded-xl text-xs font-bold cursor-default";
+
+        // Enable Step 2
+        stepPayCard.classList.remove("opacity-60");
+        step2Badge.className = "w-6 h-6 rounded-full bg-red-600 text-white text-xs font-bold flex items-center justify-center";
+        payBtn.disabled = false;
+        payBtn.className = "bg-red-600 hover:bg-red-500 text-white px-5 py-2.5 rounded-xl text-xs font-bold shadow-lg shadow-red-600/30 cursor-pointer";
+      } else {
+        // Step 1 pending
+        step1Badge.innerText = "1";
+        step1Badge.className = "w-6 h-6 rounded-full bg-red-600 text-white text-xs font-bold flex items-center justify-center";
+        approveBtn.innerText = "Cấp quyền (Approve)";
+        approveBtn.disabled = false;
+        approveBtn.className = "bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md shadow-red-600/30 cursor-pointer";
+
+        stepPayCard.classList.add("opacity-60");
+        payBtn.disabled = true;
+        payBtn.className = "bg-slate-800 text-slate-500 px-5 py-2.5 rounded-xl text-xs font-bold cursor-not-allowed";
+      }
+    }
+
+    async function mintTestUSDC() {
+      if (!signer) {
+        alert("Vui lòng kết nối ví trước!");
+        return;
+      }
+      try {
+        showStatus("Đang mint 100 Test USDC vào ví của bạn qua MockUSDC Faucet...");
+        const tx = await usdcContract.mint(userAddress, ethers.parseUnits("100", 6));
+        showStatus("Giao dịch mint đang chờ xác nhận: " + tx.hash);
+        await tx.wait();
+        await refreshBalances();
+        showStatus(" Đã nhận 100 Test USDC thành công!", "success");
+      } catch (err) {
+        showStatus("Lỗi mint USDC: " + (err.reason || err.message), "error");
+      }
+    }
+
+    async function handleApprove() {
+      try {
+        showStatus("Vui lòng xác nhận giao dịch Approve trong ví của bạn...");
+        const tx = await usdcContract.approve(ROUTER_ADDRESS, PAYMENT_AMOUNT);
+        showStatus("Giao dịch Approve đang được ghi vào block: " + tx.hash);
+        await tx.wait();
+        await refreshBalances();
+        showStatus(" Cấp quyền USDC thành công! Bây giờ bạn có thể bấm Thanh toán.", "success");
+      } catch (err) {
+        showStatus("Lỗi Approve: " + (err.reason || err.message), "error");
+      }
+    }
+
+    async function handlePay() {
+      try {
+        showStatus("1/3 — Backend đang khởi tạo & ký PaymentIntent (EIP-712)...");
+
+        // Simulate backend EIP-712 signing
+        const backendWallet = new ethers.Wallet(DEMO_BACKEND_SIGNER_KEY);
+        const paymentId = ethers.keccak256(ethers.toUtf8Bytes("shopify_order_" + Date.now()));
+        const deadline = Math.floor(Date.now() / 1000) + 3600;
+
+        const domain = {
+          name: "UniversalCheckout",
+          version: "1",
+          chainId: FUJI_CHAIN_ID,
+          verifyingContract: ROUTER_ADDRESS
+        };
+
+        const types = {
+          PaymentIntent: [
+            { name: "paymentId", type: "bytes32" },
+            { name: "buyer", type: "address" },
+            { name: "merchant", type: "address" },
+            { name: "token", type: "address" },
+            { name: "amount", type: "uint256" },
+            { name: "deadline", type: "uint256" }
+          ]
+        };
+
+        const intent = {
+          paymentId: paymentId,
+          buyer: userAddress,
+          merchant: MERCHANT_ADDRESS,
+          token: USDC_ADDRESS,
+          amount: PAYMENT_AMOUNT,
+          deadline: deadline
+        };
+
+        const signature = await backendWallet.signTypedData(domain, types, intent);
+
+        showStatus("2/3 — Vui lòng bấm xác nhận thanh toán Router.pay() trên ví của bạn...");
+        const tx = await routerContract.pay(intent, signature);
+        showStatus("3/3 — Đang chờ Avalanche C-Chain xác nhận: " + tx.hash);
+
+        const receipt = await tx.wait();
+
+        // Success!
+        await refreshBalances();
+        document.getElementById("statusAlert").classList.add("hidden");
+        document.getElementById("receiptBox").classList.remove("hidden");
+        document.getElementById("explorerTxLink").href = "https://testnet.snowtrace.io/tx/" + receipt.hash;
+
+      } catch (err) {
+        console.error(err);
+        showStatus("Lỗi thanh toán: " + (err.reason || err.message), "error");
+      }
+    }
+  </script>
+</body>
+</html>

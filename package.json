@@ -1,0 +1,25 @@
+{
+  "name": "universal-checkout-contracts",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "web": "node web/server.js",
+    "test:live": "hardhat run scripts/test-live-payment-fuji.js --network fuji",
+    "simulate": "hardhat run scripts/simulate-e2e.js",
+    "check:fuji": "node scripts/check-fuji-wallet.js",
+    "deploy:fuji": "hardhat run scripts/deploy.js --network fuji",
+    "example:sign": "hardhat run scripts/generate-signature-example.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "@openzeppelin/contracts": "^5.6.1",
+    "dotenv": "^18.0.10",
+    "hardhat": "^2.28.0"
+  }
+}
