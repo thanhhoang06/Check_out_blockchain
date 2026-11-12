@@ -97,7 +97,7 @@
               </div>
             </div>
             <button id="approveBtn" disabled onclick="handleApprove()" class="bg-slate-800 text-slate-500 px-4 py-2 rounded-xl text-xs font-bold transition-all disabled:opacity-50">
-              Cấp quyền
+              Cấp quyền (Approve)
             </button>
           </div>
         </div>
@@ -116,6 +116,27 @@
               Thanh toán ngay
             </button>
           </div>
+        </div>
+
+        <!-- NEW: Negative / Error Test Panel -->
+        <div class="border border-amber-500/20 bg-amber-500/5 rounded-2xl p-4 mt-4">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-bold text-amber-400 flex items-center gap-1.5">
+              <span>🧪</span> Chế độ thử nghiệm kịch bản lỗi (Hack / Revert Simulation)
+            </span>
+          </div>
+          <p class="text-[11px] text-slate-400 mb-3 leading-relaxed">
+            Chọn kịch bản lỗi dưới đây rồi bấm nút <strong>Thanh toán ngay</strong> ở trên để xem Smart Contract từ chối và bảo vệ tài sản như thế nào:
+          </p>
+          <select id="testScenarioSelect" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-amber-500">
+            <option value="normal">✅ Thanh toán bình thường (Hợp lệ)</option>
+            <option value="tampered_sig">❌ Lỗi 1: Giả mạo chữ ký / Hacker sửa giá tiền ($0.01)</option>
+            <option value="expired">❌ Lỗi 2: Đơn hàng hết hạn (Quá hạn 1 tiếng)</option>
+            <option value="replay">❌ Lỗi 3: Quẹt lại mã đơn đã thanh toán (Replay Attack)</option>
+            <option value="wrong_buyer">❌ Lỗi 4: Ví bấm thanh toán không trùng người mua (InvalidBuyer)</option>
+            <option value="unsupported_token">❌ Lỗi 5: Dùng token giả mạo không được hỗ trợ (UnsupportedToken)</option>
+            <option value="zero_merchant">❌ Lỗi 6: Địa chỉ người bán bị rỗng (InvalidMerchant)</option>
+          </select>
         </div>
 
       </div>
@@ -182,12 +203,14 @@
     function showStatus(message, type = "info") {
       const alertBox = document.getElementById("statusAlert");
       const alertText = document.getElementById("statusAlertText");
-      alertBox.classList.remove("hidden", "border-blue-500/30", "bg-blue-500/10", "text-blue-300", "border-emerald-500/30", "bg-emerald-500/10", "text-emerald-300", "border-red-500/30", "bg-red-500/10", "text-red-300");
+      alertBox.classList.remove("hidden", "border-blue-500/30", "bg-blue-500/10", "text-blue-300", "border-emerald-500/30", "bg-emerald-500/10", "text-emerald-300", "border-red-500/30", "bg-red-500/10", "text-red-300", "border-amber-500/30", "bg-amber-500/10", "text-amber-300");
 
       if (type === "success") {
         alertBox.classList.add("border-emerald-500/30", "bg-emerald-500/10", "text-emerald-300");
       } else if (type === "error") {
         alertBox.classList.add("border-red-500/30", "bg-red-500/10", "text-red-300");
+      } else if (type === "warning") {
+        alertBox.classList.add("border-amber-500/30", "bg-amber-500/10", "text-amber-300");
       } else {
         alertBox.classList.add("border-blue-500/30", "bg-blue-500/10", "text-blue-300");
       }
@@ -217,7 +240,6 @@
               params: [{ chainId: FUJI_CHAIN_HEX }],
             });
           } catch (switchError) {
-            // Chain not added yet -> Add Avalanche Fuji
             if (switchError.code === 4902) {
               await window.ethereum.request({
                 method: 'wallet_addEthereumChain',
@@ -270,20 +292,17 @@
       const stepPayCard = document.getElementById("stepPayCard");
 
       if (allowance >= PAYMENT_AMOUNT) {
-        // Step 1 already complete
         step1Badge.innerText = "✓";
         step1Badge.className = "w-6 h-6 rounded-full bg-emerald-500 text-white text-xs font-bold flex items-center justify-center";
         approveBtn.innerText = "Đã cấp quyền ✓";
         approveBtn.disabled = true;
         approveBtn.className = "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-4 py-2 rounded-xl text-xs font-bold cursor-default";
 
-        // Enable Step 2
         stepPayCard.classList.remove("opacity-60");
         step2Badge.className = "w-6 h-6 rounded-full bg-red-600 text-white text-xs font-bold flex items-center justify-center";
         payBtn.disabled = false;
         payBtn.className = "bg-red-600 hover:bg-red-500 text-white px-5 py-2.5 rounded-xl text-xs font-bold shadow-lg shadow-red-600/30 cursor-pointer";
       } else {
-        // Step 1 pending
         step1Badge.innerText = "1";
         step1Badge.className = "w-6 h-6 rounded-full bg-red-600 text-white text-xs font-bold flex items-center justify-center";
         approveBtn.innerText = "Cấp quyền (Approve)";
@@ -328,12 +347,30 @@
 
     async function handlePay() {
       try {
-        showStatus("1/3 — Backend đang khởi tạo & ký PaymentIntent (EIP-712)...");
+        const scenario = document.getElementById("testScenarioSelect").value;
+        showStatus("Đang thiết lập dữ liệu kịch bản: [" + scenario + "]...");
 
-        // Simulate backend EIP-712 signing
         const backendWallet = new ethers.Wallet(DEMO_BACKEND_SIGNER_KEY);
-        const paymentId = ethers.keccak256(ethers.toUtf8Bytes("shopify_order_" + Date.now()));
-        const deadline = Math.floor(Date.now() / 1000) + 3600;
+        let paymentId = ethers.keccak256(ethers.toUtf8Bytes("shopify_order_" + Date.now()));
+        let amount = PAYMENT_AMOUNT;
+        let deadline = Math.floor(Date.now() / 1000) + 3600;
+        let buyer = userAddress;
+        let merchant = MERCHANT_ADDRESS;
+        let token = USDC_ADDRESS;
+
+        // Apply Scenario Modifications
+        if (scenario === "expired") {
+          deadline = Math.floor(Date.now() / 1000) - 3600; // Expired 1 hour ago
+        } else if (scenario === "replay") {
+          // Re-use already executed live paymentId
+          paymentId = "0x4a9358922aea387cf2eaff1ecf495b092ed1ca47e092ef6867ef4ac3050802aa";
+        } else if (scenario === "wrong_buyer") {
+          buyer = "0x0000000000000000000000000000000000000001";
+        } else if (scenario === "unsupported_token") {
+          token = "0x000000000000000000000000000000000000dEaD";
+        } else if (scenario === "zero_merchant") {
+          merchant = ethers.ZeroAddress;
+        }
 
         const domain = {
           name: "UniversalCheckout",
@@ -353,32 +390,49 @@
           ]
         };
 
-        const intent = {
-          paymentId: paymentId,
-          buyer: userAddress,
-          merchant: MERCHANT_ADDRESS,
-          token: USDC_ADDRESS,
-          amount: PAYMENT_AMOUNT,
-          deadline: deadline
-        };
+        const intent = { paymentId, buyer, merchant, token, amount, deadline };
 
-        const signature = await backendWallet.signTypedData(domain, types, intent);
+        // Generate signature
+        let signature = await backendWallet.signTypedData(domain, types, intent);
 
-        showStatus("2/3 — Vui lòng bấm xác nhận thanh toán Router.pay() trên ví của bạn...");
+        if (scenario === "tampered_sig") {
+          // Hacker modifies amount in intent to 0.01 USDC (10000) without valid backend signature
+          intent.amount = ethers.parseUnits("0.01", 6);
+        }
+
+        showStatus("Đang gửi giao dịch tới ví MetaMask để kiểm tra phản hồi từ Smart Contract...");
+
         const tx = await routerContract.pay(intent, signature);
-        showStatus("3/3 — Đang chờ Avalanche C-Chain xác nhận: " + tx.hash);
-
+        showStatus("Đang chờ Avalanche C-Chain xác nhận: " + tx.hash);
         const receipt = await tx.wait();
 
-        // Success!
         await refreshBalances();
         document.getElementById("statusAlert").classList.add("hidden");
         document.getElementById("receiptBox").classList.remove("hidden");
         document.getElementById("explorerTxLink").href = "https://testnet.snowtrace.io/tx/" + receipt.hash;
 
       } catch (err) {
-        console.error(err);
-        showStatus("Lỗi thanh toán: " + (err.reason || err.message), "error");
+        console.error("Revert error captured:", err);
+        let errorMsg = err.reason || err.message || err.toString();
+
+        // Friendly error diagnosis
+        if (errorMsg.includes("InvalidSigner") || errorMsg.includes("signature")) {
+          errorMsg = "🛑 <strong>CHẶN THÀNH CÔNG: Lỗi InvalidSigner()</strong><br>Smart Contract phát hiện chữ ký bị giả mạo hoặc hacker đã cố tình sửa đổi giá tiền! Tiền của bạn không bị trừ.";
+        } else if (errorMsg.includes("PaymentExpired")) {
+          errorMsg = "🛑 <strong>CHẶN THÀNH CÔNG: Lỗi PaymentExpired()</strong><br>Smart Contract phát hiện đơn hàng đã hết hạn thanh toán (quá thời hạn deadline)!";
+        } else if (errorMsg.includes("PaymentAlreadyExecuted")) {
+          errorMsg = "🛑 <strong>CHẶN THÀNH CÔNG: Lỗi PaymentAlreadyExecuted()</strong><br>Smart Contract phát hiện mã đơn hàng này đã được thanh toán trước đó (Chặn đứng tấn công Replay Attack)!";
+        } else if (errorMsg.includes("InvalidBuyer")) {
+          errorMsg = "🛑 <strong>CHẶN THÀNH CÔNG: Lỗi InvalidBuyer()</strong><br>Smart Contract phát hiện ví người đang bấm không trùng với địa chỉ người mua trong đơn!";
+        } else if (errorMsg.includes("UnsupportedToken")) {
+          errorMsg = "🛑 <strong>CHẶN THÀNH CÔNG: Lỗi UnsupportedToken()</strong><br>Smart Contract phát hiện đây là token lạ chưa được phép thanh toán!";
+        } else if (errorMsg.includes("InvalidMerchant")) {
+          errorMsg = "🛑 <strong>CHẶN THÀNH CÔNG: Lỗi InvalidMerchant()</strong><br>Smart Contract từ chối vì địa chỉ người bán không hợp lệ (địa chỉ 0x0)!";
+        } else if (errorMsg.includes("ACTION_REJECTED") || errorMsg.includes("User rejected")) {
+          errorMsg = "⚠️ Bạn đã bấm <strong>Từ chối (Reject)</strong> giao dịch trên ví MetaMask.";
+        }
+
+        showStatus(errorMsg, "error");
       }
     }
   </script>

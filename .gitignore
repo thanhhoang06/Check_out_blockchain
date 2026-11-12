@@ -1,0 +1,15 @@
+# Dependencies
+node_modules/
+
+# Environment Variables (Private Keys - NEVER COMMIT)
+.env
+
+# Hardhat & Local Cache
+.appdata/
+.localappdata/
+cache/
+artifacts/
+
+# System / OS
+.DS_Store
+Thumbs.db

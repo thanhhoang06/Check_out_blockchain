@@ -1,18 +1,17 @@
 {
   "network": "Avalanche Fuji C-Chain",
   "chainId": 43113,
-  "paymentRouter": "0xC83FA9cEcf7fc125dbeC893402c6f0f5e3f5AeE9",
-  "mockUsdc": "0xA61ABC464034161B4C5abAee7298c1503cF6E199",
+  "paymentRouter": "0x8B6664Edd021260CD1b34FD619388E0A5F475083",
+  "mockUsdc": "0xEE4417106C68407876Ab98fF5C1EFdB873A5Fea2",
   "officialCircleUsdc": "0x5425890298aed601595a70AB815c96711a31Bc65",
   "backendSigner": "0x18BaCa02E64F7Cdd9B888F9D2D67786bc0A15bc1",
   "deployer": "0x18BaCa02E64F7Cdd9B888F9D2D67786bc0A15bc1",
-  "transactionHash": "0x9426af195a55f060e8888691efd3c071b212aab79068a2a0b908f48561ddcc0a",
-  "deployedAt": "2026-11-11T03:39:32.248Z",
+  "transactionHash": "0xf98ed1ef1516400d9ff5fb2b94dbb20a7874691d3522bb27ad7684776f76d918",
+  "deployedAt": "2026-11-11T05:17:28.049Z",
   "explorerLinks": {
-    "router": "https://testnet.snowtrace.io/address/0xC83FA9cEcf7fc125dbeC893402c6f0f5e3f5AeE9",
-    "mockUsdc": "https://testnet.snowtrace.io/address/0xA61ABC464034161B4C5abAee7298c1503cF6E199",
-    "deploymentTx": "https://testnet.snowtrace.io/tx/0x9426af195a55f060e8888691efd3c071b212aab79068a2a0b908f48561ddcc0a",
-    "samplePaymentTx": "https://testnet.snowtrace.io/tx/0x2b1d73f7e9c70fe1a05ce531cd8b196bc50ac256357b160b77493188ae2932ab"
+    "router": "https://testnet.snowtrace.io/address/0x8B6664Edd021260CD1b34FD619388E0A5F475083",
+    "mockUsdc": "https://testnet.snowtrace.io/address/0xEE4417106C68407876Ab98fF5C1EFdB873A5Fea2",
+    "tx": "https://testnet.snowtrace.io/tx/0xf98ed1ef1516400d9ff5fb2b94dbb20a7874691d3522bb27ad7684776f76d918"
   },
   "routerAbi": [
     {
