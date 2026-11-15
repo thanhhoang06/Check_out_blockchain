@@ -1,8 +1,8 @@
 {
   "network": "Avalanche Fuji C-Chain",
   "chainId": 43113,
-  "paymentRouter": "0x8B6664Edd021260CD1b34FD619388E0A5F475083",
-  "mockUsdc": "0xEE4417106C68407876Ab98fF5C1EFdB873A5Fea2",
+  "paymentRouter": "0xC83FA9cEcf7fc125dbeC893402c6f0f5e3f5AeE9",
+  "mockUsdc": "0xA61ABC464034161B4C5abAee7298c1503cF6E199",
   "officialCircleUsdc": "0x5425890298aed601595a70AB815c96711a31Bc65",
   "backendSigner": "0x18BaCa02E64F7Cdd9B888F9D2D67786bc0A15bc1",
   "deployer": "0x18BaCa02E64F7Cdd9B888F9D2D67786bc0A15bc1",
